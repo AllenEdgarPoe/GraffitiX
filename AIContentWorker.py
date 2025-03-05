@@ -27,7 +27,7 @@ class AIContent():
 
     def get_prompt(self, workflow_path, input_path, output_path):
         try:
-            with open(os.path.join(workflow_path, 'workflow_api.json'), 'r', encoding='utf-8') as f:
+            with open(workflow_path, 'r', encoding='utf-8') as f:
                 prompt = json.load(f)
 
             # put input path
@@ -60,25 +60,27 @@ class AIContent():
         return input_path
 
 
-    def convert_img_to_byte(self, image):
-        imageData = cv2.imencode('.png', image)[1].tobytes()
-        encoded_image = str(base64.b64encode(imageData), "utf-8")
-
+    def convert_img_to_byte(self, image_path):
+        with open(image_path, 'rb') as image_file:
+            encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
         return encoded_image
 
-    def get_workflow(self, style):
+    def get_workflow(self, aistyle):
         workflow_struct = {
-            "1" : "van_gogh.json",
-            "2" : "pencil_drawing.json"
+            1 : "graffiti.json",
+            2:  "rene.json",
+            3 : "vangogh.json",
+            4 : "pencil.json",
+            5 : "pencil.json"
         }
 
-        return os.path.join(self.args.workflow_dir, workflow_struct[style])
+        return os.path.join(self.args.workflow_dir, workflow_struct[aistyle])
 
     def preprocess(self, json_message):
-        workflow_path = self.get_workflow(json_message['data']['style'])
-        # input_path = self.save_byte_image(json_message['data']['image'], json_message['id'])
-        input_path = json_message['data']['image']  #for debugging
-        output_path = os.path.join(self.args.output_dir, json_message['id'])
+        workflow_path = self.get_workflow(json_message['data']['aistyle'])
+        input_path = self.save_byte_image(json_message['data']['image'], json_message['id'])
+        # input_path = json_message['data']['image']  #for debugging
+        output_path = os.path.join(self.args.output_dir, str(json_message['id'])+'.png')
         return workflow_path, input_path, output_path
 
     def run(self, json_message, timeout=5):
@@ -87,7 +89,7 @@ class AIContent():
             prompt = self.get_prompt(workflow_path, input_path, output_path)
             self.que_and_rcv_data_callback((prompt, timeout))
             encoded_image = self.convert_img_to_byte(output_path)
-            set_logger(LogType.LT_WARNING, f'[Generation]  Success : {json_message["data"]["id"]}')
+            set_logger(LogType.LT_WARNING, f'[Generation]  Success : {json_message["id"]}')
             response = {
                 "id" : json_message['id'],
                 "data":

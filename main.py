@@ -29,7 +29,7 @@ class MainWorker():
             self.content = AIContent(self.args)
             self.register_content_callbacks()
 
-            time.sleep(10)
+            # time.sleep(10)
 
             self.getThread = threading.Thread(target=self._get_redis_data, daemon=True)
             self.getThread.start()

@@ -16,11 +16,11 @@ class Redis():
 
             self.host = args.redis_host
             self.port = args.redis_port
-            self.pwd = args.redis_pwd
+            # self.pwd = args.redis_pwd
             self.redis_conn_delay = args.redis_conn_delay
 
             self.connection_pool = redis.ConnectionPool(host=self.host,
-                                                        password=self.pwd,
+                                                        # password=self.pwd,
                                                         port=self.port,
                                                         socket_keepalive=True,
                                                         socket_timeout=500,
@@ -53,20 +53,20 @@ class Redis():
 
     def store_data(self, json_message):
         try:
-            key_name = "GraffitiX:input_queue"  # 저장할 List 키
+            key_name = "GraffitiX:output_queue"  # 저장할 List 키
             self.redis_conn.lpush(key_name, json.dumps(json_message))
-            set_logger(LogType.LT_INFO, f'[Redis Store] {json_message}')
+            set_logger(LogType.LT_INFO, f'[Redis Store] {json_message["id"]}')
 
         except Exception as e:
             set_logger(LogType.LT_EXCEPTION, f'[Redis Store] Error: {str(e)}')
 
     def pop_oldest_data(self):
         try:
-            key_name = "GraffitiX:output_queue"
+            key_name = "GraffitiX:input_queue"
             data_str = self.redis_conn.rpop(key_name)
             if data_str:
                 data_dict = json.loads(data_str)
-                set_logger(LogType.LT_INFO, f'[Redis Get] {data_str}')
+                set_logger(LogType.LT_INFO, f'[Redis Get] {data_dict["id"]}')
                 return data_dict
 
         except Exception as e:

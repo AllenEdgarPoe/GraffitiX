@@ -28,6 +28,7 @@ class MainWorker():
             self.wsclient = WebSocketClient(self.args)
             self.content = AIContent(self.args)
             self.register_content_callbacks()
+            # self.content.preparation()
 
             # time.sleep(10)
 
@@ -73,11 +74,13 @@ class MainWorker():
         while self.running:
             try:
                 data = self.redis.pop_oldest_data()
+                # import torch
+                # data = torch.load('data.pth')
                 if data:
-                    self.content.run(data, timeout=10)
-                time.sleep(1)
+                    self.content.run(data, timeout=20)
             except Exception as e:
-                pass
+                set_logger(LogType.LT_EXCEPTION, str(e))
+
 
 
 def main():
@@ -87,6 +90,7 @@ def main():
     set_logger(LogType.LT_INFO, "+-----------------------------------+")
     try:
         mainworker = MainWorker()
+        mainworker._get_redis_data()
 
     except:
         set_logger(LogType.LT_EXCEPTION, 'Exception')

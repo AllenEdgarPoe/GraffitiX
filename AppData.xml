@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<XmlData>
+  <appInfo>
+    <Redis>true</Redis>
+    <ComfyWs>true</ComfyWs>
+    <Content>true</Content>
+  </appInfo>
+
+  <RedisInfo>
+    <Ip>192.168.1.41</Ip>
+    <Port>6379</Port>
+  </RedisInfo>
+  <ComfyWsInfo>
+    <Ip>127.0.0.1</Ip>
+    <Port>6379</Port>
+  </ComfyWsInfo>
+    <StyleInfo>
+        <vangogh>true</vangogh>
+        <rene>true</rene>
+        <graffiti>true</graffiti>
+        <pencil>true</pencil>
+    </StyleInfo>
+</XmlData>

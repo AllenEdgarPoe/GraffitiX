@@ -2,7 +2,7 @@ import os
 import random
 import json
 import base64
-import cv2
+import time
 from io import BytesIO
 from PIL import Image, ImageOps
 
@@ -12,20 +12,45 @@ from logger_setup import set_logger, LogType
 class AIContent():
     def __init__(self, args):
         try:
+            set_logger(LogType.LT_INFO, 'Init AIContentWorker')
+
             self.args = args
             self.que_and_rcv_data_callback = None
             self.store_redis_data_callback = None
-            set_logger(LogType.LT_INFO, 'Init AIContentWorker')
 
         except Exception as e:
             # set_logger(LogType.LT_EXCEPTION, str(e))
             raise Exception(str(e))
 
+    def preparation(self):
+        try:
+            styles = ['vangogh', 'rene', 'graffiti', 'pencil']
+            for style in styles:
+                prompt = self.get_cache_prompt(os.path.join(self.args.workflow_dir, 'cache_ckpt.json'), style)
+                self.que_and_rcv_data_callback((prompt, 15))
+                time.sleep(1)
+            return
+        except Exception as e:
+            raise e
+
     def set_callbacks(self, que_and_rcv_data_cb, store_redis_data_cb):
         self.que_and_rcv_data_callback = Delegate[object, object]([que_and_rcv_data_cb])
         self.store_redis_data_callback = Delegate[object, object]([store_redis_data_cb])
 
-    def get_prompt(self, workflow_path, input_path, output_path):
+    def get_cache_prompt(self, workflow_path, style):
+        try:
+            with open(workflow_path, 'r', encoding='utf-8') as f:
+                prompt = json.load(f)
+
+            prompt['28']['inputs']['ckpt_name'] = f'graffiti\{style}.safetensors'
+            # prompt['30']['inputs']['key'] = f'{style}_clip'
+
+            return prompt
+
+        except Exception as e:
+            raise e
+
+    def get_prompt(self, workflow_path, input_path, output_path, mask_path):
         try:
             with open(workflow_path, 'r', encoding='utf-8') as f:
                 prompt = json.load(f)
@@ -36,6 +61,8 @@ class AIContent():
             prompt['62']['inputs']['seed'] = random.randint(1,4294967294)
             # save file
             prompt['123']['inputs']['path'] = output_path
+
+            prompt['132']['inputs']['path'] = mask_path
 
             return prompt
 
@@ -71,7 +98,9 @@ class AIContent():
             2:  "rene.json",
             3 : "vangogh.json",
             4 : "pencil.json",
-            5 : "pencil.json"
+            5 : "pencil.json",
+            6 : "vangogh.json",
+            7 : "vangogh.json"
         }
 
         return os.path.join(self.args.workflow_dir, workflow_struct[aistyle])
@@ -81,15 +110,17 @@ class AIContent():
         input_path = self.save_byte_image(json_message['data']['image'], json_message['id'])
         # input_path = json_message['data']['image']  #for debugging
         output_path = os.path.join(self.args.output_dir, str(json_message['id'])+'.png')
-        return workflow_path, input_path, output_path
+        mask_path = os.path.join(self.args.output_dir, str(json_message['id'])+'_mask.png')
+        return workflow_path, input_path, output_path, mask_path
 
     def run(self, json_message, timeout=5):
         try:
-            workflow_path, input_path, output_path = self.preprocess(json_message)
-            prompt = self.get_prompt(workflow_path, input_path, output_path)
+            workflow_path, input_path, output_path, mask_path = self.preprocess(json_message)
+            prompt = self.get_prompt(workflow_path, input_path, output_path, mask_path)
             self.que_and_rcv_data_callback((prompt, timeout))
             encoded_image = self.convert_img_to_byte(output_path)
-            set_logger(LogType.LT_WARNING, f'[Generation]  Success : {json_message["id"]}')
+            encoded_mask = self.convert_img_to_byte(mask_path)
+            set_logger(LogType.LT_INFO, f'[Generation]  Success : {json_message["id"]}')
             response = {
                 "id" : json_message['id'],
                 "data":
@@ -97,7 +128,8 @@ class AIContent():
                     "x" : json_message['data']['x'],
                     "y" : json_message['data']['y'],
                     "style" : json_message['data']['style'],
-                    "image" : encoded_image
+                    "image" : encoded_image,
+                    "mask" : encoded_mask
                 }
             }
             self.store_redis_data_callback(response)

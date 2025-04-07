@@ -25,8 +25,8 @@ class WebSocketClient():
 
             self.ws = None
 
-            self.receiveThread = threading.Thread(target=self.run, daemon=True)
-            self.receiveThread.start()
+            # self.receiveThread = threading.Thread(target=self.run, daemon=True)
+            # self.receiveThread.start()
 
         except Exception as e:
             set_logger(LogType.LT_EXCEPTION, str(e))
@@ -97,13 +97,14 @@ class WebSocketClient():
             raise result
         return result
 
-    def get_images(self, prompt):
+    def get_images(self, prompt, timeout):
         try:
             self.ws = websocket.WebSocket()
             self.ws.connect(f"ws://{self.server_address}:{self.port}/ws?clientId={self.client_id}",
                             ping_interval=None)
             prompt_id = self.queue_prompt(prompt)['prompt_id']
             while True:
+                self.ws.settimeout(timeout)
                 out = self.ws.recv()
                 if isinstance(out, str):
                     message = json.loads(out)
@@ -114,6 +115,7 @@ class WebSocketClient():
                 else:
                     continue  # previews are binary data
             history = self.get_history(prompt_id)
+            self.ws.close()
             return history[prompt_id]
 
         except Exception as e:
@@ -121,11 +123,11 @@ class WebSocketClient():
 
     def que_and_rcv_data(self, prompt, timeout):
         try:
-            max_attempts = 3
+            max_attempts=2
             attempts = 0
             while attempts < max_attempts:
                 try:
-                    self.thread_execute(self.get_images, (prompt), timeout=timeout)
+                    self.get_images(prompt, timeout)
                     break
 
                 except Exception as e:
@@ -134,7 +136,7 @@ class WebSocketClient():
                     time.sleep(1)
 
             if attempts >= max_attempts:
-                raise Exception("TimeOut Error")
+                raise Exception("Timeout Error")
 
         except Exception as e:
             set_logger(LogType.LT_EXCEPTION, str(e))
@@ -187,6 +189,24 @@ class WebSocketClient():
 
 if __name__ == "__main__":
     from cmd_args import parse_args
+    import os
 
     args = parse_args()
     client = WebSocketClient(args)
+
+    def preparation(client):
+        try:
+            with open(os.path.join(args.workflow_dir, 'cache_ckpt.json'), 'r', encoding='utf-8') as f:
+                prompt = json.load(f)
+                client.que_and_rcv_data(prompt, 15)
+                time.sleep(1)
+            return
+        except Exception as e:
+            raise e
+
+    idx = 1
+    while True:
+        if idx == 100:
+            break
+        preparation(client)
+        print(idx)

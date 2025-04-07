@@ -7,7 +7,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # Redis Settings
-    parser.add_argument('--redis_host', default='192.168.1.41')  #192.168.1.166
+    parser.add_argument('--redis_host', default='192.168.1.41')  #192.168.1.41  , 166
     parser.add_argument('--redis_port', default='6379')   # 6379
     # parser.add_argument('--redis_pwd', default='!xorbis21569100')
     parser.add_argument('--redis_conn_delay', default=0.2)
